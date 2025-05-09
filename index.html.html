@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>挪车电话查询</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .input-group {
+            margin: 20px 0;
+        }
+        .input-label {
+            display: block;
+            margin-bottom: 8px;
+            text-align: left;
+            font-weight: bold;
+        }
+        input {
+            font-size: 16px;
+            padding: 12px;
+            width: 100%;
+            box-sizing: border-box;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        input:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .phone-number {
+            font-size: 24px;
+            color: #4CAF50;
+            margin: 20px 0;
+            display: none;
+        }
+        .hint {
+            color: #666;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+        .captcha-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .captcha-code {
+            font-size: 24px;
+            letter-spacing: 5px;
+            padding: 5px 15px;
+            background-color: #f0f0f0;
+            margin-right: 10px;
+            border-radius: 5px;
+            user-select: none;
+        }
+        .refresh-captcha {
+            cursor: pointer;
+            color: #4CAF50;
+            font-size: 20px;
+        }
+        .error {
+            color: #f44336;
+            font-size: 14px;
+            margin-top: -10px;
+            margin-bottom: 15px;
+            text-align: left;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>挪车电话查询服务</h1>
+        <p>请输入车牌号码和验证码查询车主电话</p>
+        
+        <div class="input-group">
+            <label class="input-label">车牌号码（湘D开头）：</label>
+            <input type="text" id="plateInput" placeholder="请输入车牌后5位" maxlength="5">
+            <div id="plateError" class="error">请输入正确的车牌后5位</div>
+        </div>
+        
+        <div class="input-group">
+            <label class="input-label">验证码：</label>
+            <div class="captcha-container">
+                <div id="captchaCode" class="captcha-code"></div>
+                <div class="refresh-captcha" onclick="generateCaptcha()">↻</div>
+            </div>
+            <input type="text" id="captchaInput" placeholder="请输入上方验证码" maxlength="4">
+            <div id="captchaError" class="error">验证码不正确</div>
+        </div>
+        
+        <button id="queryBtn" onclick="checkInfo()">查询电话</button>
+        <button id="cooldownBtn" style="display:none;" disabled>请 <span id="countdown">60</span> 秒后再试</button>
+        
+        <div id="phoneNumber" class="phone-number">
+            车主电话：<a href="tel:17347019295">173-4701-9295</a>
+        </div>
+        
+        <div class="hint">
+            温馨提示：请核对车牌信息无误后再拨打电话，避免打扰他人
+        </div>
+    </div>
+
+    <script>
+        // 正确车牌后5位
+        const CORRECT_PLATE = "835C7";
+        // 查询冷却时间(秒)
+        const COOLDOWN_TIME = 60;
+        
+        let currentCaptcha = "";
+        let isOnCooldown = false;
+        
+        // 生成验证码
+        function generateCaptcha() {
+            const chars = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+            currentCaptcha = "";
+            for (let i = 0; i < 4; i++) {
+                currentCaptcha += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            document.getElementById("captchaCode").textContent = currentCaptcha;
+        }
+        
+        // 验证信息
+        function checkInfo() {
+            const plateInput = document.getElementById("plateInput").value.toUpperCase();
+            const captchaInput = document.getElementById("captchaInput").value.toUpperCase();
+            const plateError = document.getElementById("plateError");
+            const captchaError = document.getElementById("captchaError");
+            const phoneDiv = document.getElementById("phoneNumber");
+            
+            // 重置错误提示
+            plateError.style.display = "none";
+            captchaError.style.display = "none";
+            
+            let isValid = true;
+            
+            // 验证车牌
+            if (plateInput !== CORRECT_PLATE) {
+                plateError.style.display = "block";
+                isValid = false;
+            }
+            
+            // 验证验证码
+            if (captchaInput !== currentCaptcha) {
+                captchaError.style.display = "block";
+                isValid = false;
+            }
+            
+            if (isValid) {
+                phoneDiv.style.display = "block";
+                startCooldown();
+            } else {
+                phoneDiv.style.display = "none";
+                generateCaptcha();
+            }
+        }
+        
+        // 开始冷却时间
+        function startCooldown() {
+            isOnCooldown = true;
+            document.getElementById("queryBtn").style.display = "none";
+            document.getElementById("cooldownBtn").style.display = "block";
+            
+            let seconds = COOLDOWN_TIME;
+            const countdownElement = document.getElementById("countdown");
+            
+            const timer = setInterval(() => {
+                seconds--;
+                countdownElement.textContent = seconds;
+                
+                if (seconds <= 0) {
+                    clearInterval(timer);
+                    isOnCooldown = false;
+                    document.getElementById("queryBtn").style.display = "block";
+                    document.getElementById("cooldownBtn").style.display = "none";
+                    document.getElementById("phoneNumber").style.display = "none";
+                    generateCaptcha();
+                }
+            }, 1000);
+        }
+        
+        // 按回车键触发查询
+        document.addEventListener("keyup", function(event) {
+            if (event.key === "Enter" && !isOnCooldown) {
+                checkInfo();
+            }
+        });
+        
+        // 页面加载时生成验证码
+        window.onload = function() {
+            generateCaptcha();
+        };
+    </script>
+</body>
+</html>
